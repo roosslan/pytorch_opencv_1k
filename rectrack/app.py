@@ -14,6 +14,7 @@ from rectrack.config import Config, ConfigError, ModelConfig, load_config, redac
 from rectrack.detector import YoloTracker
 from rectrack.overlay import annotated, draw_tracks
 from rectrack.pipeline import TrackingWorker
+from rectrack.proxy import ProxyTunnel, local_url, rtsp_target
 from rectrack.recorder import TargetRecorder
 from rectrack.snapshots import SnapshotWriter
 from rectrack.tracks import TrackRegistry
@@ -178,6 +179,8 @@ def run(config: Config, headless: bool) -> int:
       -> детектор с трекером в фоновом потоке (TrackingWorker)
       -> реестр целей (TrackRegistry)
       -> обработчик событий (TargetRecorder: снимки, журнал, ClickHouse).
+    Если в [camera] задан proxy, перед чтением потока поднимает локальный туннель через
+    HTTP-прокси (ProxyTunnel), и FFmpeg подключается к камере через него.
     Затем ждёт, пока пользователь закроет окно, нажмёт q или Ctrl+C. При выходе останавливает
     поток обработки, закрывает все сопровождаемые цели с причиной 'shutdown', дописывает
     остаток буфера в ClickHouse и отключается от камеры.
@@ -227,8 +230,15 @@ def run(config: Config, headless: bool) -> int:
     )
 
     log.info("Камера '%s': %s (%s)", cam.name, redact_url(cam.rtsp_url), cam.transport)
+    url, tunnel = cam.rtsp_url, None
+    if cam.proxy:
+        host, port = rtsp_target(cam.rtsp_url)
+        tunnel = ProxyTunnel(cam.proxy, host, port, timeout=cam.timeout_sec)
+        tunnel.start()
+        url = local_url(cam.rtsp_url, tunnel.port)
+        log.info("Через прокси %s (локальный туннель %s)", redact_url(cam.proxy), redact_url(url))
     reader = LatestFrameReader(
-        lambda: make_rtsp_capture(cam.rtsp_url, cam.transport, cam.timeout_sec),
+        lambda: make_rtsp_capture(url, cam.transport, cam.timeout_sec),
         cam.reconnect_delay_sec,
     )
     worker = TrackingWorker(
@@ -254,6 +264,8 @@ def run(config: Config, headless: bool) -> int:
         if sink is not None:
             sink.stop()
         reader.stop()
+        if tunnel is not None:
+            tunnel.stop()
     return 0
 
 

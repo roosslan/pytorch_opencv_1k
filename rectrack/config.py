@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
+from rectrack.proxy import parse_proxy, rtsp_target
+
 # Пароль ClickHouse лучше не хранить в config.toml: его можно задать переменной окружения
 # или строкой в файле .env рядом с config.toml. Порядок: окружение, .env, config.toml.
 PASSWORD_ENV = "REC_CLICKHOUSE_PASSWORD"
@@ -36,6 +38,7 @@ class CameraConfig:
     transport: str = "tcp"  # "tcp" надёжнее, "udp" даёт чуть меньшую задержку
     reconnect_delay_sec: float = 3.0
     timeout_sec: float = 5.0  # таймаут открытия/чтения, зависший поток вызовет переподключение
+    proxy: str = ""  # HTTP-прокси с CONNECT ("http://адрес:порт"); пусто = напрямую
 
 
 @dataclass(frozen=True)
@@ -257,6 +260,8 @@ def _validate(config: Config) -> None:
       - числа в разумных пределах (порог уверенности в (0, 1), порт 1..65535, таймауты
         положительные и т. д.);
       - транспорт только "tcp" или "udp";
+      - если задан прокси: его адрес корректен, адрес камеры начинается с rtsp://,
+        транспорт "tcp" (UDP через прокси не проходит);
       - имя базы - допустимый идентификатор ClickHouse (оно подставляется прямо в SQL);
       - лимит буфера не меньше размера пакета.
     Останавливается на первой найденной ошибке.
@@ -274,6 +279,19 @@ def _validate(config: Config) -> None:
     _require(cam.transport in ("tcp", "udp"), "[camera] transport должен быть 'tcp' или 'udp'")
     _require(cam.reconnect_delay_sec >= 0, "[camera] reconnect_delay_sec должен быть >= 0")
     _require(cam.timeout_sec > 0, "[camera] timeout_sec должен быть > 0")
+    if cam.proxy:
+        try:
+            parse_proxy(cam.proxy)
+        except ValueError as exc:
+            raise ConfigError(f"[camera] proxy: {exc}") from None
+        try:
+            rtsp_target(cam.rtsp_url)
+        except ValueError as exc:
+            raise ConfigError(f"[camera] rtsp_url: {exc}") from None
+        _require(
+            cam.transport == "tcp",
+            "[camera] через proxy работает только transport = 'tcp': UDP прокси не передаёт",
+        )
 
     _require(bool(mdl.weights), "[model] weights не должен быть пустым")
     _require(bool(mdl.device), "[model] device не должен быть пустым")
