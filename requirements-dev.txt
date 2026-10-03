@@ -1,0 +1,5 @@
+# Тестам нужен только numpy: torch, ultralytics, OpenCV и clickhouse-connect подключаются
+# лениво и в тестах заменены заглушками.
+numpy
+pytest
+ruff

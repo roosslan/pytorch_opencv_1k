@@ -1,0 +1,46 @@
+# Скопируйте этот файл в config.toml и отредактируйте. config.toml содержит адрес камеры
+# (возможно, с паролем), поэтому его не следует добавлять в git.
+
+[camera]
+name = "cam1"                 # имя камеры, попадает во все таблицы ClickHouse
+rtsp_url = "rtsp://user:password@192.168.1.10:554/stream"
+transport = "tcp"             # "tcp" надёжнее, "udp" даёт чуть меньшую задержку
+reconnect_delay_sec = 3.0     # пауза перед переподключением после потери потока
+timeout_sec = 5.0             # таймаут открытия и чтения; зависший поток вызовет переподключение
+
+[model]
+weights = "models/yolov8n.pt" # если файла нет, ultralytics скачает его сам (~6 МБ)
+device = "cpu"                # "cpu", "cuda" или "cuda:0" (нужен PyTorch с CUDA, см. README)
+imgsz = 640                   # до этого размера сжимается кадр; больше = видны дальние цели, но медленнее
+conf = 0.35                   # порог уверенности детектора
+iou = 0.5                     # порог подавления дублей (NMS)
+classes = ["person"]          # что сопровождаем; пустой список [] = все 80 классов COCO
+half = false                  # FP16: быстрее на GPU, на CPU не работает
+tracker = "bytetrack.yaml"    # "bytetrack.yaml", "botsort.yaml" или путь к своему файлу
+
+[tracking]
+confirm_hits = 3              # цель захвачена, когда подтверждена на стольких кадрах подряд
+lost_timeout_sec = 3.0        # цель потеряна, если её не видно дольше этого времени
+points_interval_sec = 0.5     # как часто писать точку траектории (0 = на каждом кадре)
+trail_length = 40             # длина «хвоста» траектории в окне
+reset_gap_sec = 5.0           # разрыв между кадрами больше этого сбрасывает трекер
+stats_interval_sec = 30.0     # как часто писать статистику в журнал (0 = не писать)
+
+[snapshots]
+enabled = true                # снимок в момент захвата цели
+directory = "capture"
+annotate = true               # рисовать рамки и номера целей на снимке
+
+[clickhouse]
+enabled = true                # false: события только в журнал, без базы
+host = "127.0.0.1"
+port = 8123                   # HTTP-порт ClickHouse
+username = "default"
+password = ""                 # лучше не хранить здесь: задайте переменную REC_CLICKHOUSE_PASSWORD
+database = "rec"
+secure = false                # true: подключаться по HTTPS
+create_schema = true          # при старте создать базу и таблицы, если их нет
+batch_size = 500              # писать, когда накопилось столько строк...
+flush_interval_sec = 2.0      # ...или когда прошло столько секунд
+max_buffer_rows = 100000      # если база недоступна, копим не больше стольких строк
+connect_timeout_sec = 5.0

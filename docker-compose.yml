@@ -1,0 +1,26 @@
+# ClickHouse для разработки: docker compose up -d
+# Пароль берётся из файла .env (образец: .env.example), в этот файл его писать не нужно.
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest  # для постоянной установки закрепите конкретную версию
+    container_name: rec_clickhouse
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8123:8123"  # HTTP: им пользуется rec_pytorch
+      - "127.0.0.1:9000:9000"  # нативный протокол: для clickhouse-client
+    environment:
+      CLICKHOUSE_DB: rec
+      CLICKHOUSE_USER: rec
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?задайте CLICKHOUSE_PASSWORD в файле .env}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    volumes:
+      - ./data/clickhouse:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
