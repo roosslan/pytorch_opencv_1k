@@ -1,0 +1,9 @@
+# PyTorch: по умолчанию ставится сборка для CPU. Для видеокарты Nvidia сначала поставьте
+# torch с CUDA по инструкции из README, а уже потом остальное.
+torch
+ultralytics
+lap
+scipy
+clickhouse-connect
+numpy
+opencv-python
