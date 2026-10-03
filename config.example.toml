@@ -7,6 +7,7 @@ rtsp_url = "rtsp://user:password@192.168.1.10:554/stream"
 transport = "tcp"             # "tcp" надёжнее, "udp" даёт чуть меньшую задержку
 reconnect_delay_sec = 3.0     # пауза перед переподключением после потери потока
 timeout_sec = 5.0             # таймаут открытия и чтения; зависший поток вызовет переподключение
+proxy = ""                    # HTTP-прокси с CONNECT, например "http://192.168.1.20:8888"; пусто = напрямую
 
 [model]
 weights = "models/yolov8n.pt" # если файла нет, ultralytics скачает его сам (~6 МБ)

@@ -76,6 +76,26 @@ def test_invalid_values_are_rejected(section, key, value, message):
         parse_config(raw(**{section: {key: value}}))
 
 
+def test_proxy_is_empty_by_default_and_can_be_set():
+    assert parse_config(BASE).camera.proxy == ""
+    cfg = parse_config(raw(camera={"proxy": "http://192.168.1.20:8888"}))
+    assert cfg.camera.proxy == "http://192.168.1.20:8888"
+
+
+@pytest.mark.parametrize(
+    "camera, message",
+    [
+        ({"proxy": "192.168.1.20:8888"}, "proxy"),
+        ({"proxy": "http://192.168.1.20"}, "proxy"),
+        ({"proxy": "http://192.168.1.20:8888", "transport": "udp"}, "tcp"),
+        ({"proxy": "http://192.168.1.20:8888", "rtsp_url": "http://cam/1"}, "rtsp_url"),
+    ],
+)
+def test_invalid_proxy_settings_are_rejected(camera, message):
+    with pytest.raises(ConfigError, match=message):
+        parse_config(raw(camera=camera))
+
+
 def test_unknown_key_is_rejected():
     with pytest.raises(ConfigError, match="confidence"):
         parse_config(raw(model={"confidence": 0.5}))
