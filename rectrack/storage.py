@@ -167,6 +167,26 @@ def default_client_factory(cfg: ClickHouseConfig) -> Any:
     )
 
 
+MAX_RETRY_DELAY_SEC = 30.0
+
+
+def retry_delay(interval: float, failures: int) -> float:
+    """Пауза перед следующей попыткой записи после неудач подряд: интервал * 2^(число неудач),
+    но не больше MAX_RETRY_DELAY_SEC. Степень ограничена, поэтому при недоступной базе в течение
+    многих часов (тысячи неудач подряд) число не переполняется.
+
+    Args:
+        interval: обычный интервал записи (flush_interval_sec), в секундах.
+        failures: сколько попыток подряд завершились ошибкой.
+
+    Returns:
+        пауза в секундах; 0, если неудач не было.
+    """
+    if failures <= 0:
+        return 0.0
+    return min(interval * 2 ** min(failures, 30), MAX_RETRY_DELAY_SEC)
+
+
 def send_receive_timeout(cfg: ClickHouseConfig) -> float:
     """Считает таймаут одного запроса к ClickHouse (отправка данных и ожидание ответа): вдвое
     больше таймаута подключения, но не меньше 30 секунд, чтобы крупная пачка строк успевала
@@ -435,7 +455,7 @@ class ClickHouseSink:
             if self._stop.is_set():
                 break
             # После неудачи ждём всё дольше (до 30 с), а не долбим недоступную базу.
-            backoff = min(interval * 2**self._failures, 30.0) if self._failures else 0.0
+            backoff = retry_delay(interval, self._failures)
             if self._clock() - self._last_attempt < backoff:
                 continue
             self._last_attempt = self._clock()

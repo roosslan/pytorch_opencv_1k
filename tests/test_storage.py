@@ -19,6 +19,7 @@ from rectrack.storage import (
     event_row,
     point_row,
     recent_events,
+    retry_delay,
     schema_statements,
     track_row,
 )
@@ -344,3 +345,15 @@ def test_schema_deduplicates_retried_inserts():
     """Повтор после оборванной вставки не должен навсегда удваивать строки."""
     for statement in schema_statements("rec")[1:]:
         assert "ENGINE = ReplacingMergeTree" in statement
+
+
+def test_retry_delay_grows_and_is_capped():
+    assert retry_delay(2.0, 0) == 0.0
+    assert retry_delay(2.0, 1) == 4.0
+    assert retry_delay(2.0, 3) == 16.0
+    assert retry_delay(2.0, 4) == 30.0
+
+
+def test_retry_delay_survives_thousands_of_failures():
+    """База недоступна много часов: раньше 2**failures переполнял float и ронял поток записи."""
+    assert retry_delay(2.0, 5000) == 30.0
