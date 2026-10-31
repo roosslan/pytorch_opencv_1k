@@ -1,4 +1,4 @@
-﻿# Подготовка окружения rec_pytorch: пакеты в venv, пароль в .env, ClickHouse в Docker,
+﻿# Подготовка окружения pytorch_opencv_1k: пакеты в venv, пароль в .env, ClickHouse в Docker,
 # схема базы, самопроверка и тесты. Запуск из директории проекта:
 #   powershell -ExecutionPolicy Bypass -File .\setup_dev.ps1
 # Скрипт можно запускать повторно: готовые шаги просто подтверждаются.
@@ -23,7 +23,7 @@ if (-not (Test-Path $py)) {
 }
 Run $py @('--version')
 
-Step 'Пакеты Python (torch с CUDA уже стоит и не переустанавливается)'
+Step 'Пакеты Python (torch с CUDA не переустанавливается)'
 Run $py @('-m', 'pip', 'install', '-r', 'requirements.txt', '-r', 'requirements-dev.txt')
 Run $py @('-c', "import torch, ultralytics, cv2, numpy, clickhouse_connect; print('torch', torch.__version__, '| CUDA:', torch.cuda.is_available())")
 
@@ -35,7 +35,7 @@ if (Test-Path $envFile) {
     $bytes = New-Object byte[] 18
     [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
     $password = [Convert]::ToBase64String($bytes).Replace('+', 'x').Replace('/', 'y').TrimEnd('=')
-    $text = "# Пароль ClickHouse для docker-compose и rec_pytorch. Файл .env в git не добавляйте.`n" +
+    $text = "# Пароль ClickHouse для docker-compose и pytorch_opencv_1k. Файл .env в git не добавблять`n" +
             "CLICKHOUSE_PASSWORD=$password`nREC_CLICKHOUSE_PASSWORD=$password`n"
     [IO.File]::WriteAllText($envFile, $text, (New-Object Text.UTF8Encoding $false))
     Write-Host 'Создан .env со случайным паролем'
@@ -48,7 +48,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 Run 'docker' @('compose', 'up', '-d')
-Write-Host 'Жду, пока ClickHouse начнёт отвечать...'
+Write-Host 'Waiting, пока ClickHouse начнёт отвечать...'
 $ready = $false
 for ($i = 0; $i -lt 60; $i++) {
     try {

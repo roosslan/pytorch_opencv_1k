@@ -21,7 +21,7 @@ from rectrack.tracks import TrackRegistry
 
 log = logging.getLogger("rectrack")
 
-WINDOW = "rec_pytorch"
+WINDOW = "pytorch_opencv_1k"
 NO_SIGNAL_AFTER_SEC = 3.0
 
 
