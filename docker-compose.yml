@@ -6,7 +6,7 @@ services:
     container_name: rec_clickhouse
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8123:8123"  # HTTP: им пользуется rec_pytorch
+      - "127.0.0.1:8123:8123"  # HTTP: для pytorch_opencv_1k
       - "127.0.0.1:9000:9000"  # нативный протокол: для clickhouse-client
     environment:
       CLICKHOUSE_DB: rec
